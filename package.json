@@ -1,0 +1,16 @@
+{
+  "name": "carpooling-modules",
+  "version": "1.0.0",
+  "description": "카풀링 산학협력 캡스톤 - 라이브 채팅, 질문 큐, 음성 명령 모듈",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:chat": "npm run dev --workspace=live-chat",
+    "dev:queue": "npm run dev --workspace=question-queue",
+    "test": "echo \"단위 테스트 추가 예정\""
+  },
+  "author": "Capstone Team",
+  "license": "MIT"
+}
