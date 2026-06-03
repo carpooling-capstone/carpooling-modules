@@ -113,7 +113,7 @@ export default function MenteePage() {
     });
 
     try {
-      await fetch('http://localhost:3002/api/questions', {
+      await fetch('http://localhost:3002/api/questions/v1/items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

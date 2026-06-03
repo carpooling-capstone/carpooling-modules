@@ -1,31 +1,42 @@
 # 모듈 간 API 명세서
 
-본 문서는 라이브 채팅, 질문 큐 매니저, 음성 명령 인식 모듈 간 주고받는 데이터 규격을 정의한다. OpenAPI 3.0 형식 기반으로 작성되었으며, 회사 내부 개발팀의 통합 시 참고 자료로 활용된다.
+본 문서는 라이브 채팅, 질문 큐 매니저, 음성 명령 인식 모듈 간 주고받는 데이터 규격을 정의한다. 카풀링 측이 제시한 표준 API 스펙을 따른다.
+
+## 표준 API 규약
+
+### URL 구조
+
+/api/<feature>/<version>/<path>
+
+예시: 질문 등록 → `POST /api/questions/v1/items`
+
+### 사용 메소드
+
+GET, POST, PUT, PATCH, DELETE
+
+### 표준 응답 형식
+
+모든 응답은 다음 형식으로 감싼다.
+
+```json
+{
+  "requestId": "88097a77-c204-4c4e-a286-15dc9d30b6c1",
+  "responseInfo": {
+    "status": 200,
+    "returnCode": "0",
+    "message": "Request Success"
+  },
+  "data": {}
+}
+```
+
+- **requestId**: 요청 구분 ID, UUID 사용
+- **responseInfo.status**: HTTP 상태 코드
+- **responseInfo.returnCode**: 성공 시 "0", 문제 발생 시 13자리 에러 추적 코드
+- **responseInfo.message**: 시스템 메시지
+- **data**: 실제 응답 데이터
 
 ## 공통 데이터 타입
-
-### Session
-
-```typescript
-interface Session {
-  sessionId: string;       // UUID v4
-  mentorId: string;        // 멘토 사용자 ID
-  title: string;           // 세션 제목
-  createdAt: string;       // ISO 8601
-  status: 'waiting' | 'live' | 'ended';
-  currentSlide: number;    // 현재 표시 중인 슬라이드 번호
-}
-```
-
-### User
-
-```typescript
-interface User {
-  userId: string;
-  nickname: string;
-  role: 'mentor' | 'mentee';
-}
-```
 
 ### ChatMessage
 
@@ -36,7 +47,7 @@ interface ChatMessage {
   userId: string;
   nickname: string;
   content: string;
-  timestamp: string;
+  timestamp: string;       // ISO 8601
   type: 'normal' | 'super_chat';
   superChatTier?: 'bronze' | 'silver' | 'gold';
   slideContext: number;    // 메시지 등록 시점의 슬라이드 번호
@@ -50,9 +61,10 @@ interface Question {
   questionId: string;
   sessionId: string;
   userId: string;
+  nickname: string;
   content: string;
   tier: 'free' | 'bronze' | 'silver' | 'gold';
-  amount: number;          // 결제 금액 (원)
+  amount: number;
   slideContext: number;
   createdAt: string;
   status: 'pending' | 'reading' | 'answered' | 'expired';
@@ -65,48 +77,76 @@ interface Question {
 interface VoiceCommand {
   commandId: string;
   sessionId: string;
-  rawText: string;         // STT 인식 원문
-  intent: 'next_slide' | 'prev_slide' | 'pause' | 'resume' 
+  rawText: string;
+  intent: 'next_slide' | 'prev_slide' | 'pause' | 'resume'
         | 'next_question' | 'accept_1on1' | 'end_session';
-  confidence: number;      // 0.0 ~ 1.0
+  confidence: number;
   timestamp: string;
 }
 ```
 
 ## 라이브 채팅 모듈 API
 
-### WebSocket 이벤트
+### REST API
+
+| 메소드 | URL | 설명 |
+|--------|-----|------|
+| GET | `/api/chat/v1/sessions/:sessionId/history` | 채팅 히스토리 조회 |
+
+### WebSocket 이벤트 (Socket.io)
+
+WebSocket 이벤트는 요청-응답 구조가 아니므로 표준 응답 형식 적용 대상에서 제외된다.
 
 | 이벤트 | 방향 | 페이로드 |
 |--------|------|----------|
-| `chat:join` | Client → Server | `{ sessionId, userId }` |
-| `chat:message` | Client → Server | `{ content, slideContext }` |
+| `chat:join` | Client → Server | `{ sessionId, userId, nickname }` |
+| `chat:message` | Client → Server | `{ content, type, slideContext, ... }` |
 | `chat:broadcast` | Server → Client | `ChatMessage` |
 | `chat:curated` | Server → Mentor | `ChatMessage` (큐레이션 통과만) |
-| `chat:leave` | Client → Server | `{ sessionId, userId }` |
-
-### REST API
-
-- `GET /api/chat/:sessionId/history` - 채팅 히스토리 조회
-- `DELETE /api/chat/:sessionId/:messageId` - 메시지 삭제 (멘토 권한)
 
 ## 질문 큐 매니저 API
 
-### REST API
+| 메소드 | URL | 설명 |
+|--------|-----|------|
+| POST | `/api/questions/v1/items` | 질문 등록 |
+| GET | `/api/questions/v1/sessions/:sessionId` | 세션 질문 목록 조회 (`?grouped=true` 그룹핑) |
+| GET | `/api/questions/v1/sessions/:sessionId/next` | 다음 우선순위 질문 조회 |
+| PATCH | `/api/questions/v1/items/:questionId/status` | 질문 상태 변경 |
 
-- `POST /api/questions` - 질문 등록
-  - Body: `{ sessionId, content, tier, slideContext, amount }`
-  - Response: `Question`
+### 질문 등록 요청 예시
 
-- `GET /api/questions/:sessionId` - 세션 질문 큐 조회
-  - Query: `?grouped=true` (슬라이드별 그룹핑 여부)
-  - Response: `Question[]` 또는 `{ [slideNumber]: Question[] }`
+POST /api/questions/v1/items
+Content-Type: application/json
+{
+"sessionId": "demo-session-001",
+"userId": "mentee-abc123",
+"nickname": "테스터",
+"content": "이 슬라이드 핵심 개념이 뭔가요?",
+"tier": "gold",
+"amount": 50000,
+"slideContext": 3
+}
 
-- `PATCH /api/questions/:questionId/status` - 질문 상태 변경
-  - Body: `{ status }`
+### 응답 예시
 
-- `GET /api/questions/:sessionId/next` - 다음 우선순위 질문 가져오기
-  - Response: `Question`
+```json
+{
+  "requestId": "88097a77-c204-4c4e-a286-15dc9d30b6c1",
+  "responseInfo": {
+    "status": 200,
+    "returnCode": "0",
+    "message": "Question Created"
+  },
+  "data": {
+    "questionId": "...",
+    "sessionId": "demo-session-001",
+    "content": "이 슬라이드 핵심 개념이 뭔가요?",
+    "tier": "gold",
+    "slideContext": 3,
+    "status": "pending"
+  }
+}
+```
 
 ## 음성 명령 인식 모듈 API
 
@@ -120,26 +160,9 @@ interface VoiceCommand {
 
 ### 호출어
 
-모든 명령은 호출어 `카풀링`으로 시작해야 한다.
+모든 명령은 호출어 `오케이 드라이브`로 시작해야 한다.
 
-예시:
-- `카풀링, 다음` → `next_slide`
-- `카풀링, 이전` → `prev_slide`
-- `카풀링, 일시정지` → `pause`
-- `카풀링, 다음 질문` → `next_question`
-- `카풀링, 1:1 수락` → `accept_1on1`
-- `카풀링, 세션 종료` → `end_session`
-
-## 모듈 간 연계 흐름
-
-### 슈퍼챗 응대 흐름 (시나리오 2)
-
-```
-[Mentee Client] --POST /api/questions--> [Question Queue]
-[Question Queue] --질문 저장--> [Redis]
-[Mentor Client] --voice:command (next_question)--> [Voice Server]
-[Voice Server] --GET /api/questions/next--> [Question Queue]
-[Question Queue] --Question 반환--> [Voice Server]
-[Voice Server] --TTS 출력--> [Mentor Speaker]
-[Mentor] --음성 응답--> [Mentee Client (broadcast)]
-```
+- `오케이 드라이브, 다음` → next_slide
+- `오케이 드라이브, 다음 질문` → next_question
+- `오케이 드라이브, 일대일 수락` → accept_1on1
+- `오케이 드라이브, 세션 종료` → end_session

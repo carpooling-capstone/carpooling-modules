@@ -5,7 +5,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
 // 호출어
-const WAKE_WORD = '카풀링';
+const WAKE_WORD = '오케이 드라이브';
 
 // 명령어 매핑
 const COMMAND_KEYWORDS: Record<string, string> = {
@@ -200,7 +200,7 @@ export default function VoicePage() {
     <div className="min-h-screen bg-gradient-to-br from-purple-600 to-blue-700 text-white p-6">
       <header className="mb-6">
         <h1 className="text-3xl font-bold">🎙️ 음성 명령 인식 프로토타입</h1>
-        <p className="text-purple-100 mt-1">호출어 &ldquo;카풀링&rdquo; 다음에 명령어를 말해보세요</p>
+        <p className="text-purple-100 mt-1">호출어 &ldquo;오케이 드라이브&rdquo; 다음에 명령어를 말해보세요</p>
       </header>
 
       <div className="bg-white/10 backdrop-blur rounded-2xl p-8 mb-6 text-center">
@@ -243,7 +243,7 @@ export default function VoicePage() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
           {Object.keys(COMMAND_KEYWORDS).map((keyword) => (
             <div key={keyword} className="bg-white/10 px-3 py-2 rounded">
-              &ldquo;카풀링, {keyword}&rdquo;
+              &ldquo;오케이 드라이브, {keyword}&rdquo;
             </div>
           ))}
         </div>

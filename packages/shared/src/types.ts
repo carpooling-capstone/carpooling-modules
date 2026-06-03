@@ -69,7 +69,7 @@ export interface VoiceCommand {
 }
 
 // 호출어
-export const WAKE_WORD = '카풀링';
+export const WAKE_WORD = '오케이 드라이브';
 
 // 명령어 매핑 (호출어 다음에 오는 단어)
 export const COMMAND_KEYWORDS: Record<string, VoiceCommandIntent> = {
